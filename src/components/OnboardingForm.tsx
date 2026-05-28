@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import BlueprintDashboard from './BlueprintDashboard';
 
-interface FormData {
+export interface FormData {
   // Step 1: Profile
   companyName: string;
   contactEmail: string;
@@ -20,6 +21,11 @@ export default function OnboardingForm() {
   const [step, setStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [errors, setErrors] = useState({
+    companyName: '',
+    email: '',
+    industry: '',
+  });
   const [form, setForm] = useState<FormData>({
     companyName: '',
     contactEmail: '',
@@ -31,8 +37,14 @@ export default function OnboardingForm() {
     audience: '',
   });
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleChange = (field: keyof Omit<FormData, 'features' | 'platform'>, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({
+      ...prev,
+      [field === 'contactEmail' ? 'email' : field]: '',
+    }));
   };
 
   const toggleFeature = (feature: string) => {
@@ -69,8 +81,33 @@ export default function OnboardingForm() {
     return false;
   };
 
+  const validateStepOne = () => {
+    const nextErrors = {
+      companyName: '',
+      email: '',
+      industry: '',
+    };
+
+    if (form.companyName.trim().length === 0) {
+      nextErrors.companyName = 'Company name is required.';
+    }
+    if (!emailRegex.test(form.contactEmail.trim())) {
+      nextErrors.email = 'Enter a valid email address.';
+    }
+    if (form.industry.trim().length === 0) {
+      nextErrors.industry = 'Please select an industry.';
+    }
+
+    setErrors(nextErrors);
+    return !nextErrors.companyName && !nextErrors.email && !nextErrors.industry;
+  };
+
   const handleNext = () => {
-    if (!isStepValid()) return;
+    if (step === 1) {
+      if (!validateStepOne()) return;
+    } else if (!isStepValid()) {
+      return;
+    }
     if (step < 3) setStep((step + 1) as Step);
   };
 
@@ -88,6 +125,21 @@ export default function OnboardingForm() {
       setIsComplete(true);
       console.log('Final scope data:', payload);
     }, 3000);
+  };
+
+  const handleReset = () => {
+    setIsComplete(false);
+    setStep(1);
+    setForm({
+      companyName: '',
+      contactEmail: '',
+      industry: '',
+      features: [],
+      platform: '',
+      integrations: '',
+      aesthetic: '',
+      audience: '',
+    });
   };
 
   if (isSubmitting) {
@@ -109,21 +161,7 @@ export default function OnboardingForm() {
   }
 
   if (isComplete) {
-    return (
-      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-8">
-        <div className="max-w-md w-full rounded-3xl border border-purple-500/30 bg-neutral-900/95 p-10 text-center shadow-2xl">
-          <p className="text-sm uppercase tracking-[0.3em] text-purple-300 mb-4">
-            Success
-          </p>
-          <h1 className="text-3xl font-semibold text-white mb-3">
-            System Scope Successfully Generated!
-          </h1>
-          <p className="text-sm leading-6 text-neutral-400">
-            Your custom architecture draft is ready. You can close this screen or keep refining your input.
-          </p>
-        </div>
-      </div>
-    );
+    return <BlueprintDashboard formData={form} onReset={handleReset} />;
   }
 
   return (
@@ -132,7 +170,7 @@ export default function OnboardingForm() {
         <ProgressBar currentStep={step} totalSteps={3} />
 
         <div className="mt-12">
-          {step === 1 && <StepOne form={form} onChange={handleChange} />}
+          {step === 1 && <StepOne form={form} onChange={handleChange} errors={errors} />}
           {step === 2 && (
             <StepTwo
               form={form}
@@ -214,12 +252,20 @@ interface StepProps {
   onChange: (field: keyof Omit<FormData, 'features' | 'platform'>, value: string) => void;
 }
 
+interface StepOneProps extends StepProps {
+  errors: {
+    companyName: string;
+    email: string;
+    industry: string;
+  };
+}
+
 interface StepTwoProps extends StepProps {
   toggleFeature: (feature: string) => void;
   setPlatform: (platform: FormData['platform']) => void;
 }
 
-function StepOne({ form, onChange }: StepProps) {
+function StepOne({ form, onChange, errors }: StepOneProps) {
   return (
     <div className="space-y-6">
       <div>
@@ -233,6 +279,9 @@ function StepOne({ form, onChange }: StepProps) {
           placeholder="Enter your company name"
           className="w-full px-4 py-2 bg-neutral-900 border border-neutral-700 rounded-lg focus:outline-none focus:border-purple-600 transition-colors"
         />
+        {errors.companyName && (
+          <p className="mt-2 text-sm text-red-500">{errors.companyName}</p>
+        )}
       </div>
 
       <div>
@@ -246,6 +295,9 @@ function StepOne({ form, onChange }: StepProps) {
           placeholder="your.email@company.com"
           className="w-full px-4 py-2 bg-neutral-900 border border-neutral-700 rounded-lg focus:outline-none focus:border-purple-600 transition-colors"
         />
+        {errors.email && (
+          <p className="mt-2 text-sm text-red-500">{errors.email}</p>
+        )}
       </div>
 
       <div>
@@ -264,6 +316,9 @@ function StepOne({ form, onChange }: StepProps) {
           <option value="retail">Retail</option>
           <option value="other">Other</option>
         </select>
+        {errors.industry && (
+          <p className="mt-2 text-sm text-red-500">{errors.industry}</p>
+        )}
       </div>
     </div>
   );
