@@ -1,288 +1,239 @@
-import { FormData } from './OnboardingForm';
+import React from 'react';
+
+interface ProjectData {
+  companyName: string;
+  industry: string;
+  platform: string;
+  audience: string;
+  aesthetic: string;
+  features: string[];
+  aiGeneratedBlueprint: string; // The raw markdown from Gemini
+}
 
 interface BlueprintDashboardProps {
-  projectData?: Partial<FormData> & { aiGeneratedBlueprint?: string };
+  projectData: ProjectData | null;
   onReset: () => void;
 }
 
 export default function BlueprintDashboard({ projectData, onReset }: BlueprintDashboardProps) {
-  const safeProject = {
-    companyName: projectData?.companyName || '',
-    industry: projectData?.industry || '',
-    platform: projectData?.platform || '',
-    audience: projectData?.audience || '',
-    aesthetic: projectData?.aesthetic || '',
-    features: projectData?.features || [],
-    aiGeneratedBlueprint: projectData?.aiGeneratedBlueprint || '',
-  };
-
-  // Extract markdown sections from AI blueprint if available
-  const extractMarkdownSection = (markdown: string, sectionTitle: string): string[] => {
-    if (!markdown) return [];
-    const regex = new RegExp(
-      `## ${sectionTitle}\\s*\\n([\\s\\S]*?)(?=##|$)`,
-      'i'
+  if (!projectData) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+        <p className="text-neutral-400">No project data found.</p>
+      </div>
     );
+  }
+
+  // 🧠 TEXT EXTRACTOR: Grabs paragraph content under specific markdown headers
+  const extractSection = (headingName: string, fallbackText: string): string => {
+    const markdown = projectData.aiGeneratedBlueprint || '';
+    const regex = new RegExp(`##\\s*${headingName}[\\r\\n]+([\\s\\S]*?)(##|$)`, 'i');
     const match = markdown.match(regex);
-    if (!match) return [];
-    return match[1]
-      .trim()
-      .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-      .map(line => line.trim().replace(/^[-*]\s*/, ''));
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return fallbackText;
   };
 
-  const getTechStack = () => {
-    const stack: string[] = [];
-
-    if (safeProject.platform === 'web' || safeProject.platform === 'both') {
-      stack.push('React', 'TypeScript', 'Tailwind');
+  // 🛠️ TECH STACK EXTRACTOR: Parses markdown to find bolded text, backticks, or lists under the Tech section
+  const extractTechStack = (): string[] => {
+    const markdown = projectData.aiGeneratedBlueprint || '';
+    
+    // Look for common engineering header variants
+    const sectionRegex = /##\s*(?:Technical\s+Stack|Tech\s+Stack|Technology\s+Ecosystem|Recommended\s+Tech)[\r\n]+([\s\S]*?)(##|$)/i;
+    const match = markdown.match(sectionRegex);
+    
+    if (match && match[1]) {
+      const sectionContent = match[1];
+      // Regex captures phrases inside **bolds**, `codes`, or after bullet points (- item)
+      const techRegex = /(?:\*\*|`|-\s+)([a-zA-Z0-9._+\s-]{2,15})(?:\*\*|`|[\r\n])/g;
+      const foundTech: string[] = [];
+      let techMatch;
+      
+      while ((techMatch = techRegex.exec(sectionContent)) !== null) {
+        const cleanTech = techMatch[1].trim();
+        // Skip structural headers that might get accidentally swept up
+        const blacklistedWords = ['Frontend', 'Backend', 'Database', 'Hosting', 'Mobile', 'Web', 'Infrastructure', 'Stack'];
+        if (cleanTech && !blacklistedWords.includes(cleanTech)) {
+          if (!foundTech.includes(cleanTech)) {
+            foundTech.push(cleanTech);
+          }
+        }
+      }
+      
+      if (foundTech.length > 0) return foundTech;
     }
 
-    if (safeProject.platform === 'mobile' || safeProject.platform === 'both') {
-      stack.push('React Native');
-    }
-
-    if (safeProject.features.includes('Authentication')) {
-      stack.push('Auth0', 'JWT');
-    }
-
-    if (safeProject.features.includes('Payment Integration')) {
-      stack.push('Stripe', 'Node.js');
-    }
-
-    if (safeProject.features.includes('Database Storage')) {
-      stack.push('PostgreSQL', 'Redis');
-    }
-
-    if (safeProject.features.includes('Real-time Dashboard')) {
-      stack.push('WebSocket', 'Chart.js');
-    }
-
-    return [...new Set(stack)];
+    // Default emergency backup stack if regex has a matching slip
+    return ['React', 'TypeScript', 'Tailwind', 'Node.js', 'Express', 'MongoDB'];
   };
 
-  const getArchitectureDescription = () => {
-    // Try to extract from AI blueprint markdown first
-    const extractedLayers = extractMarkdownSection(
-      safeProject.aiGeneratedBlueprint,
-      'Architecture|System Architecture'
-    );
-    if (extractedLayers.length > 0) {
-      return extractedLayers;
-    }
+  // Run our dynamic extraction setups
+  const dynamicFrontendLayer = extractSection("Frontend Layer", "Custom framework layout built for user interaction rules.");
+  const dynamicBusinessLayer = extractSection("Business Logic Layer", "Custom application services engineered for business rule compliance.");
+  const dynamicDataLayer = extractSection("Data Persistence", "Relational or non-relational structures optimized for system load.");
 
-    // Fallback: generate dynamic descriptions based on projectData
-    const layers: string[] = [];
+  const dynamicMvpText = extractSection("MVP Setup", "Foundation architecture setup engineered to match your specified target timeline rules.");
+  const dynamicIntegrationText = extractSection("Feature Integration", "Developing primary functional blocks and connecting external api configurations.");
+  const dynamicLaunchText = extractSection("Launch Strategy", "Final performance optimization loops, security audits, and live environment deployment.");
 
-    layers.push(
-      'Frontend Layer - ' +
-        (safeProject.platform === 'both'
-          ? 'Web & Mobile'
-          : safeProject.platform === 'web'
-          ? 'Web Application'
-          : 'Mobile Application')
-    );
-
-    if (safeProject.features.includes('Real-time Dashboard')) {
-      layers.push('API Gateway - Request routing & authentication');
-    }
-
-    layers.push('Business Logic Layer - Core application services');
-
-    if (safeProject.features.includes('Database Storage')) {
-      layers.push('Data Persistence - Relational & caching layers');
-    }
-
-    if (safeProject.features.length > 0) {
-      layers.push(
-        `Feature Integration - ${safeProject.features.slice(0, 2).join(', ')} services`
-      );
-    }
-
-    return layers;
-  };
-
-  const getRoadmapPhases = () => {
-    // Try to extract from AI blueprint markdown first
-    const extractedPhases = extractMarkdownSection(
-      safeProject.aiGeneratedBlueprint,
-      'Roadmap|Development Roadmap|Timeline'
-    );
-
-    if (extractedPhases.length >= 3) {
-      return [
-        { title: 'Phase 1', description: extractedPhases[0], duration: 'Weeks 1-3' },
-        { title: 'Phase 2', description: extractedPhases[1], duration: 'Weeks 4-8' },
-        { title: 'Phase 3', description: extractedPhases[2], duration: 'Weeks 9-10' },
-      ];
-    }
-
-    // Fallback: generate dynamic roadmap based on projectData
-    return [
-      {
-        title: 'MVP Setup',
-        description: `Foundation architecture, ${safeProject.features.length > 0 ? 'core authentication' : 'secure backend'}, and ${
-          safeProject.platform === 'both'
-            ? 'multi-platform'
-            : safeProject.platform === 'web'
-            ? 'web'
-            : 'mobile'
-        } setup.`,
-        duration: 'Weeks 1-3',
-      },
-      {
-        title: 'Feature Integration',
-        description: `Integrate ${
-          safeProject.features.length > 0
-            ? safeProject.features.slice(0, 2).join(' & ')
-            : 'selected features'
-        } functionality, UI refinement, and testing infrastructure for ${safeProject.industry} use case.`,
-        duration: 'Weeks 4-8',
-      },
-      {
-        title: 'Launch Strategy',
-        description:
-          'Performance optimization, security audit, deployment pipeline setup, and production-ready go-live preparation with monitoring.',
-        duration: 'Weeks 9-10',
-      },
-    ];
-  };
-
-  const techStack = getTechStack();
-  const architectureLayers = getArchitectureDescription();
-  const roadmapPhases = getRoadmapPhases();
+  const dynamicTechStack = extractTechStack();
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold mb-2">Your Project Blueprint</h1>
-          <p className="text-neutral-400">
-            {safeProject.companyName} • {safeProject.industry}
+    <div className="min-h-screen bg-neutral-950 text-white p-6 sm:p-12 font-sans selection:bg-purple-500/30">
+      <div className="max-w-4xl mx-auto space-y-12">
+        
+        {/* Header section */}
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent">
+            Your Project Blueprint
+          </h1>
+          <p className="text-purple-400 font-medium tracking-wide uppercase text-sm">
+            {projectData.companyName} • {projectData.industry}
           </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-2 mb-12">
-          <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <span className="text-purple-400">⚙️</span> Architecture Blueprint
-            </h2>
-            <div className="space-y-3">
-              {architectureLayers.map((layer, idx) => (
-                <div key={idx} className="flex gap-3">
-                  <div className="w-1 bg-purple-500/50 rounded-full flex-shrink-0" />
-                  <p className="text-sm leading-relaxed text-neutral-300">{layer}</p>
-                </div>
-              ))}
-            </div>
+        {/* 1. Architecture Blueprint Sections */}
+        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-6">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⚙️</span>
+            <h2 className="text-xl font-bold tracking-tight">Architecture Blueprint</h2>
           </div>
-
-          <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <span className="text-purple-400">🎯</span> Project Scope
-            </h2>
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="text-neutral-400 mb-1">Target Audience</p>
-                <p className="text-neutral-200 line-clamp-3">{safeProject.audience}</p>
-              </div>
-              <div>
-                <p className="text-neutral-400 mb-1">Brand Direction</p>
-                <p className="text-neutral-200">{safeProject.aesthetic}</p>
-              </div>
-              <div>
-                <p className="text-neutral-400 mb-1">Selected Features</p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {safeProject.features.map(feature => (
-                    <span
-                      key={feature}
-                      className="inline-block px-3 py-1 rounded-full text-xs bg-purple-600/20 text-purple-200 border border-purple-600/30"
-                    >
-                      {feature}
-                    </span>
-                  ))}
-                </div>
-              </div>
+          
+          <div className="border-l-2 border-purple-600/40 pl-6 space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">Frontend Layer</h3>
+              <p className="text-neutral-300 mt-1 text-sm leading-relaxed">{dynamicFrontendLayer}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">Business Logic Layer</h3>
+              <p className="text-neutral-300 mt-1 text-sm leading-relaxed">{dynamicBusinessLayer}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">Data Persistence</h3>
+              <p className="text-neutral-300 mt-1 text-sm leading-relaxed">{dynamicDataLayer}</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8 mb-12">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-            <span className="text-purple-400">🛠️</span> Recommended Tech Stack
-            </h2>
-          <div className="flex flex-wrap gap-3">
-            {techStack.map(tech => (
-              <div
-                key={tech}
-                className="px-4 py-2 rounded-2xl border border-neutral-700 bg-neutral-800/50 text-sm font-medium text-neutral-200 hover:border-purple-500/50 transition-colors"
+        {/* 2. Dynamic Tech Stack Badges */}
+        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🛠️</span>
+            <h2 className="text-xl font-bold tracking-tight">Recommended Tech Stack</h2>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 pt-2">
+            {dynamicTechStack.map((tech, index) => (
+              <span 
+                key={index} 
+                className="px-4 py-2 bg-neutral-950 border border-neutral-800 hover:border-purple-500/40 rounded-xl text-sm font-medium transition-all text-neutral-200"
               >
                 {tech}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 3. Project Parameters Summary Meta */}
+        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🎯</span>
+            <h2 className="text-xl font-bold tracking-tight">Project Parameters</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-neutral-500 block text-xs uppercase tracking-wider">Audience Focus</span>
+              <span className="text-neutral-200 font-medium">{projectData.audience || 'General public'}</span>
+            </div>
+            <div>
+              <span className="text-neutral-500 block text-xs uppercase tracking-wider">Design Aesthetic</span>
+              <span className="text-neutral-200 font-medium">{projectData.aesthetic || 'Standard Clean'}</span>
+            </div>
+          </div>
+          <div className="pt-2">
+            <span className="text-neutral-500 block text-xs uppercase tracking-wider mb-2">Targeted Feature Blocks</span>
+            <div className="flex flex-wrap gap-2">
+              {projectData.features.length > 0 ? (
+                projectData.features.map((f, i) => (
+                  <span key={i} className="px-3 py-1 text-xs font-medium rounded-full bg-purple-950/40 border border-purple-500/20 text-purple-300">
+                    {f}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-neutral-400 italic">AI Auto-Selected Best Stack Match</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Development Roadmap Timeline */}
+        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-8">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📋</span>
+            <h2 className="text-xl font-bold tracking-tight">Tailored Development Roadmap</h2>
+          </div>
+
+          <div className="space-y-8 relative before:absolute before:inset-0 before:left-5 before:w-0.5 before:bg-neutral-800">
+            {/* Step 1 */}
+            <div className="flex gap-6 relative">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-purple-500 bg-neutral-950 text-xs font-bold text-purple-400 shadow-xl">
+                1
               </div>
-            ))}
+              <div className="space-y-1 pt-1">
+                <h3 className="text-base font-bold text-white">MVP Foundation Phase</h3>
+                <p className="text-xs text-neutral-500">Initial Milestones</p>
+                <p className="text-neutral-400 text-sm leading-relaxed pt-1">{dynamicMvpText}</p>
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex gap-6 relative">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-purple-500 bg-neutral-950 text-xs font-bold text-purple-400 shadow-xl">
+                2
+              </div>
+              <div className="space-y-1 pt-1">
+                <h3 className="text-base font-bold text-white">Feature Integration & Connections</h3>
+                <p className="text-xs text-neutral-500">Core Architecture Construction</p>
+                <p className="text-neutral-400 text-sm leading-relaxed pt-1">{dynamicIntegrationText}</p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex gap-6 relative">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-purple-500 bg-neutral-950 text-xs font-bold text-purple-400 shadow-xl">
+                3
+              </div>
+              <div className="space-y-1 pt-1">
+                <h3 className="text-base font-bold text-white">System Launch Strategy</h3>
+                <p className="text-xs text-neutral-500">Production Go-Live Prep</p>
+                <p className="text-neutral-400 text-sm leading-relaxed pt-1">{dynamicLaunchText}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8 mb-12">
-          <h2 className="text-xl font-semibold mb-8 flex items-center gap-2">
-            <span className="text-purple-400">📋</span> Development Roadmap
-          </h2>
-          <div className="space-y-6">
-            {roadmapPhases.map((phase, idx) => (
-              <RoadmapPhase
-                key={idx}
-                phase={`Phase ${idx + 1}`}
-                title={phase.title}
-                description={phase.description}
-                duration={phase.duration}
-              />
-            ))}
+        {/* 5. Comprehensive Full AI Output Document Panel */}
+        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-6 sm:p-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📄</span>
+            <h2 className="text-xl font-bold tracking-tight">Full System Blueprint Document</h2>
+          </div>
+          <div className="p-5 sm:p-6 rounded-2xl bg-neutral-950 border border-neutral-800 overflow-x-auto text-neutral-300 text-sm font-mono whitespace-pre-wrap leading-relaxed max-h-[500px] overflow-y-auto custom-scrollbar">
+            {projectData.aiGeneratedBlueprint}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8 mb-12">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-            <span className="text-purple-400">📄</span> AI Generated Blueprint
-          </h2>
-          <pre className="whitespace-pre-wrap text-left text-sm bg-gray-900 p-6 rounded-xl border border-purple-500 text-gray-200 font-mono">
-            {safeProject.aiGeneratedBlueprint || 'No generated blueprint is available yet.'}
-          </pre>
-        </div>
-
-        <div className="flex justify-center mb-8">
+        {/* Re-scope Action Trigger */}
+        <div className="text-center pt-4">
           <button
             onClick={onReset}
-            className="px-8 py-3 rounded-2xl border border-purple-600/40 bg-purple-600/10 text-purple-200 font-medium hover:bg-purple-600/20 hover:border-purple-500/60 transition-all"
+            className="px-6 py-2.5 rounded-xl border border-neutral-800 hover:border-purple-500/50 bg-neutral-900 text-sm font-medium transition-all text-neutral-300 hover:text-white"
           >
-            Forge New Scope
+            ← Scope Another Product
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
 
-interface RoadmapPhaseProps {
-  phase: string;
-  title: string;
-  description: string;
-  duration: string;
-}
-
-function RoadmapPhase({ phase, title, description, duration }: RoadmapPhaseProps) {
-  return (
-    <div className="flex gap-6">
-      <div className="flex flex-col items-center">
-        <div className="w-10 h-10 rounded-full border-2 border-purple-500 bg-purple-600/20 flex items-center justify-center text-sm font-semibold text-purple-200">
-          {phase.split(' ')[1]}
-        </div>
-        <div className="w-0.5 h-12 bg-purple-500/30 mt-4" />
-      </div>
-      <div className="pb-8">
-        <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-        <p className="text-xs text-neutral-400 mb-2">{duration}</p>
-        <p className="text-sm text-neutral-300 leading-relaxed">{description}</p>
       </div>
     </div>
   );
