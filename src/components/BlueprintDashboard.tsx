@@ -1,69 +1,157 @@
 import { FormData } from './OnboardingForm';
 
 interface BlueprintDashboardProps {
-  formData: FormData;
+  projectData?: Partial<FormData> & { aiGeneratedBlueprint?: string };
   onReset: () => void;
 }
 
-export default function BlueprintDashboard({ formData, onReset }: BlueprintDashboardProps) {
+export default function BlueprintDashboard({ projectData, onReset }: BlueprintDashboardProps) {
+  const safeProject = {
+    companyName: projectData?.companyName || '',
+    industry: projectData?.industry || '',
+    platform: projectData?.platform || '',
+    audience: projectData?.audience || '',
+    aesthetic: projectData?.aesthetic || '',
+    features: projectData?.features || [],
+    aiGeneratedBlueprint: projectData?.aiGeneratedBlueprint || '',
+  };
+
+  // Extract markdown sections from AI blueprint if available
+  const extractMarkdownSection = (markdown: string, sectionTitle: string): string[] => {
+    if (!markdown) return [];
+    const regex = new RegExp(
+      `## ${sectionTitle}\\s*\\n([\\s\\S]*?)(?=##|$)`,
+      'i'
+    );
+    const match = markdown.match(regex);
+    if (!match) return [];
+    return match[1]
+      .trim()
+      .split('\n')
+      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+      .map(line => line.trim().replace(/^[-*]\s*/, ''));
+  };
+
   const getTechStack = () => {
     const stack: string[] = [];
 
-    if (formData.platform === 'web' || formData.platform === 'both') {
+    if (safeProject.platform === 'web' || safeProject.platform === 'both') {
       stack.push('React', 'TypeScript', 'Tailwind');
     }
 
-    if (formData.platform === 'mobile' || formData.platform === 'both') {
+    if (safeProject.platform === 'mobile' || safeProject.platform === 'both') {
       stack.push('React Native');
     }
 
-    if (formData.features.includes('Authentication')) {
+    if (safeProject.features.includes('Authentication')) {
       stack.push('Auth0', 'JWT');
     }
 
-    if (formData.features.includes('Payment Integration')) {
+    if (safeProject.features.includes('Payment Integration')) {
       stack.push('Stripe', 'Node.js');
     }
 
-    if (formData.features.includes('Database Storage')) {
+    if (safeProject.features.includes('Database Storage')) {
       stack.push('PostgreSQL', 'Redis');
     }
 
-    if (formData.features.includes('Real-time Dashboard')) {
+    if (safeProject.features.includes('Real-time Dashboard')) {
       stack.push('WebSocket', 'Chart.js');
-    }
-
-    if (formData.integrations) {
-      stack.push('REST API', 'Webhooks');
     }
 
     return [...new Set(stack)];
   };
 
   const getArchitectureDescription = () => {
+    // Try to extract from AI blueprint markdown first
+    const extractedLayers = extractMarkdownSection(
+      safeProject.aiGeneratedBlueprint,
+      'Architecture|System Architecture'
+    );
+    if (extractedLayers.length > 0) {
+      return extractedLayers;
+    }
+
+    // Fallback: generate dynamic descriptions based on projectData
     const layers: string[] = [];
 
-    layers.push('Frontend Layer - ' + (formData.platform === 'both' ? 'Web & Mobile' : formData.platform === 'web' ? 'Web Application' : 'Mobile Application'));
+    layers.push(
+      'Frontend Layer - ' +
+        (safeProject.platform === 'both'
+          ? 'Web & Mobile'
+          : safeProject.platform === 'web'
+          ? 'Web Application'
+          : 'Mobile Application')
+    );
 
-    if (formData.features.includes('Real-time Dashboard') || formData.integrations) {
+    if (safeProject.features.includes('Real-time Dashboard')) {
       layers.push('API Gateway - Request routing & authentication');
     }
 
     layers.push('Business Logic Layer - Core application services');
 
-    if (formData.features.includes('Database Storage')) {
+    if (safeProject.features.includes('Database Storage')) {
       layers.push('Data Persistence - Relational & caching layers');
     }
 
-    if (formData.integrations) {
-      layers.push('Integration Layer - Third-party system connectors');
+    if (safeProject.features.length > 0) {
+      layers.push(
+        `Feature Integration - ${safeProject.features.slice(0, 2).join(', ')} services`
+      );
     }
 
     return layers;
   };
 
+  const getRoadmapPhases = () => {
+    // Try to extract from AI blueprint markdown first
+    const extractedPhases = extractMarkdownSection(
+      safeProject.aiGeneratedBlueprint,
+      'Roadmap|Development Roadmap|Timeline'
+    );
+
+    if (extractedPhases.length >= 3) {
+      return [
+        { title: 'Phase 1', description: extractedPhases[0], duration: 'Weeks 1-3' },
+        { title: 'Phase 2', description: extractedPhases[1], duration: 'Weeks 4-8' },
+        { title: 'Phase 3', description: extractedPhases[2], duration: 'Weeks 9-10' },
+      ];
+    }
+
+    // Fallback: generate dynamic roadmap based on projectData
+    return [
+      {
+        title: 'MVP Setup',
+        description: `Foundation architecture, ${safeProject.features.length > 0 ? 'core authentication' : 'secure backend'}, and ${
+          safeProject.platform === 'both'
+            ? 'multi-platform'
+            : safeProject.platform === 'web'
+            ? 'web'
+            : 'mobile'
+        } setup.`,
+        duration: 'Weeks 1-3',
+      },
+      {
+        title: 'Feature Integration',
+        description: `Integrate ${
+          safeProject.features.length > 0
+            ? safeProject.features.slice(0, 2).join(' & ')
+            : 'selected features'
+        } functionality, UI refinement, and testing infrastructure for ${safeProject.industry} use case.`,
+        duration: 'Weeks 4-8',
+      },
+      {
+        title: 'Launch Strategy',
+        description:
+          'Performance optimization, security audit, deployment pipeline setup, and production-ready go-live preparation with monitoring.',
+        duration: 'Weeks 9-10',
+      },
+    ];
+  };
+
   const techStack = getTechStack();
   const architectureLayers = getArchitectureDescription();
+  const roadmapPhases = getRoadmapPhases();
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white p-8">
@@ -71,7 +159,7 @@ export default function BlueprintDashboard({ formData, onReset }: BlueprintDashb
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-2">Your Project Blueprint</h1>
           <p className="text-neutral-400">
-            {formData.companyName} • {formData.industry}
+            {safeProject.companyName} • {safeProject.industry}
           </p>
         </div>
 
@@ -97,16 +185,16 @@ export default function BlueprintDashboard({ formData, onReset }: BlueprintDashb
             <div className="space-y-4 text-sm">
               <div>
                 <p className="text-neutral-400 mb-1">Target Audience</p>
-                <p className="text-neutral-200 line-clamp-3">{formData.audience}</p>
+                <p className="text-neutral-200 line-clamp-3">{safeProject.audience}</p>
               </div>
               <div>
                 <p className="text-neutral-400 mb-1">Brand Direction</p>
-                <p className="text-neutral-200">{formData.aesthetic}</p>
+                <p className="text-neutral-200">{safeProject.aesthetic}</p>
               </div>
               <div>
                 <p className="text-neutral-400 mb-1">Selected Features</p>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.features.map(feature => (
+                  {safeProject.features.map(feature => (
                     <span
                       key={feature}
                       className="inline-block px-3 py-1 rounded-full text-xs bg-purple-600/20 text-purple-200 border border-purple-600/30"
@@ -123,7 +211,7 @@ export default function BlueprintDashboard({ formData, onReset }: BlueprintDashb
         <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8 mb-12">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
             <span className="text-purple-400">🛠️</span> Recommended Tech Stack
-          </h2>
+            </h2>
           <div className="flex flex-wrap gap-3">
             {techStack.map(tech => (
               <div
@@ -141,25 +229,25 @@ export default function BlueprintDashboard({ formData, onReset }: BlueprintDashb
             <span className="text-purple-400">📋</span> Development Roadmap
           </h2>
           <div className="space-y-6">
-            <RoadmapPhase
-              phase="Phase 1"
-              title="MVP Setup"
-              description="Foundation architecture, core authentication, and basic database schema implementation."
-              duration="Weeks 1-3"
-            />
-            <RoadmapPhase
-              phase="Phase 2"
-              title="Feature Integration"
-              description={`Integrate ${formData.features.slice(0, 2).join(' & ')} functionality, UI refinement, and testing infrastructure.`}
-              duration="Weeks 4-8"
-            />
-            <RoadmapPhase
-              phase="Phase 3"
-              title="Launch Strategy"
-              description="Performance optimization, security audit, deployment pipeline setup, and go-live preparation."
-              duration="Weeks 9-10"
-            />
+            {roadmapPhases.map((phase, idx) => (
+              <RoadmapPhase
+                key={idx}
+                phase={`Phase ${idx + 1}`}
+                title={phase.title}
+                description={phase.description}
+                duration={phase.duration}
+              />
+            ))}
           </div>
+        </div>
+
+        <div className="rounded-3xl border border-purple-600/20 bg-neutral-900 p-8 mb-12">
+          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+            <span className="text-purple-400">📄</span> AI Generated Blueprint
+          </h2>
+          <pre className="whitespace-pre-wrap text-left text-sm bg-gray-900 p-6 rounded-xl border border-purple-500 text-gray-200 font-mono">
+            {safeProject.aiGeneratedBlueprint || 'No generated blueprint is available yet.'}
+          </pre>
         </div>
 
         <div className="flex justify-center mb-8">

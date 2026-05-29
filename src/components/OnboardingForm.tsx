@@ -21,6 +21,8 @@ export default function OnboardingForm() {
   const [step, setStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [projectData, setProjectData] = useState<any>(null);
   const [errors, setErrors] = useState({
     companyName: '',
     email: '',
@@ -115,20 +117,42 @@ export default function OnboardingForm() {
     if (step > 1) setStep((step - 1) as Step);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isStepValid() || isSubmitting) return;
-    const payload = { ...form };
     setIsSubmitting(true);
+    setSubmitError('');
 
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://localhost:5000/api/onboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Capture the full project model containing the `aiGeneratedBlueprint`
+        setProjectData(data.project);
+        setIsSubmitting(false);
+        setIsComplete(true);
+      } else {
+        setSubmitError(data.error || 'Failed to generate blueprint');
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+      setSubmitError('Unable to reach the server. Please try again.');
       setIsSubmitting(false);
-      setIsComplete(true);
-      console.log('Final scope data:', payload);
-    }, 3000);
+    }
   };
 
   const handleReset = () => {
     setIsComplete(false);
+    setSubmitError('');
+    setProjectData(null);
     setStep(1);
     setForm({
       companyName: '',
@@ -146,26 +170,47 @@ export default function OnboardingForm() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center p-8">
         <div className="max-w-lg w-full rounded-3xl border border-purple-600/20 bg-neutral-900/95 p-10 text-center shadow-2xl">
-          <p className="text-sm uppercase tracking-[0.3em] text-purple-300 mb-6">
-            Forging your custom system architecture...
-          </p>
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-purple-500/40 bg-purple-600/10 text-purple-200">
-            <span className="animate-spin block h-8 w-8 rounded-full border-4 border-t-transparent border-purple-300" />
-          </div>
-          <p className="mt-6 text-neutral-300">
-            Simulating a backend AI scope call, hang tight for a few seconds.
-          </p>
+          {submitError ? (
+            <>
+              <p className="text-sm uppercase tracking-[0.3em] text-red-400 mb-6">
+                Error
+              </p>
+              <p className="text-neutral-300 mb-6">{submitError}</p>
+              <button
+                onClick={() => {
+                  setIsSubmitting(false);
+                  setSubmitError('');
+                }}
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-all"
+              >
+                Try Again
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm uppercase tracking-[0.3em] text-purple-300 mb-6">
+                Forging your custom system architecture...
+              </p>
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-purple-500/40 bg-purple-600/10 text-purple-200">
+                <span className="animate-spin block h-8 w-8 rounded-full border-4 border-t-transparent border-purple-300" />
+              </div>
+              <p className="mt-6 text-neutral-300">
+                Connecting to backend and generating your blueprint.
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
   if (isComplete) {
-    return <BlueprintDashboard formData={form} onReset={handleReset} />;
+    // Pass the saved database project containing the aiGeneratedBlueprint out to the dashboard view
+    return <BlueprintDashboard projectData={projectData} onReset={handleReset} />;
   }
 
   return (
-      <div className="min-h-screen bg-neutral-950 text-white p-8">
+    <div className="min-h-screen bg-neutral-950 text-white p-8">
       <div className="max-w-2xl mx-auto">
         <ProgressBar currentStep={step} totalSteps={3} />
 
@@ -224,8 +269,6 @@ interface ProgressBarProps {
 }
 
 function ProgressBar({ currentStep, totalSteps }: ProgressBarProps) {
-  const progress = (currentStep / totalSteps) * 100;
-
   return (
     <div className="w-full">
       <div className="flex justify-between mb-3">
