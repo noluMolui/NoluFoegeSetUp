@@ -7,7 +7,7 @@ interface ProjectData {
   audience: string;
   aesthetic: string;
   features: string[];
-  aiGeneratedBlueprint: string; // The raw markdown from Gemini
+  aiGeneratedBlueprint: string; 
 }
 
 interface BlueprintDashboardProps {
@@ -24,7 +24,7 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
     );
   }
 
-  // 🧠 TEXT EXTRACTOR: Grabs paragraph content under specific markdown headers
+
   const extractSection = (headingName: string, fallbackText: string): string => {
     const markdown = projectData.aiGeneratedBlueprint || '';
     const regex = new RegExp(`##\\s*${headingName}[\\r\\n]+([\\s\\S]*?)(##|$)`, 'i');
@@ -34,9 +34,7 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
     }
     return fallbackText;
   };
-
-  // 🛠️ TECH STACK EXTRACTOR: Parses markdown to find bolded text, backticks, or lists under the Tech section
-  const extractTechStack = (): string[] => {
+const extractTechStack = (): string[] => {
     const markdown = projectData.aiGeneratedBlueprint || '';
     
     // Look for common engineering header variants
@@ -80,43 +78,42 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
   const dynamicTechStack = extractTechStack();
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-6 sm:p-12 font-sans selection:bg-purple-500/30">
+    <div className="min-h-screen bg-neutral-950 text-white p-6 sm:p-12 font-sans selection:bg-yellow-500/30">
       <div className="max-w-4xl mx-auto space-y-12">
         
-        {/* Header section */}
+      
         <div className="text-center space-y-2">
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent">
             Your Project Blueprint
           </h1>
-          <p className="text-purple-400 font-medium tracking-wide uppercase text-sm">
+          <p className="text-yellow-300 font-medium tracking-wide uppercase text-sm">
             {projectData.companyName} • {projectData.industry}
           </p>
         </div>
 
-        {/* 1. Architecture Blueprint Sections */}
+     
         <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-6">
           <div className="flex items-center gap-3">
             <span className="text-xl">⚙️</span>
             <h2 className="text-xl font-bold tracking-tight">Architecture Blueprint</h2>
           </div>
           
-          <div className="border-l-2 border-purple-600/40 pl-6 space-y-6">
+          <div className="border-l-2 border-yellow-500/40 pl-6 space-y-6">
             <div>
-              <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">Frontend Layer</h3>
+              <h3 className="text-sm font-semibold text-yellow-300 uppercase tracking-wider">Frontend Layer</h3>
               <p className="text-neutral-300 mt-1 text-sm leading-relaxed">{dynamicFrontendLayer}</p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">Business Logic Layer</h3>
+              <h3 className="text-sm font-semibold text-yellow-300 uppercase tracking-wider">Business Logic Layer</h3>
               <p className="text-neutral-300 mt-1 text-sm leading-relaxed">{dynamicBusinessLayer}</p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-purple-300 uppercase tracking-wider">Data Persistence</h3>
+              <h3 className="text-sm font-semibold text-yellow-300 uppercase tracking-wider">Data Persistence</h3>
               <p className="text-neutral-300 mt-1 text-sm leading-relaxed">{dynamicDataLayer}</p>
             </div>
           </div>
         </div>
 
-        {/* 2. Dynamic Tech Stack Badges */}
         <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-4">
           <div className="flex items-center gap-3">
             <span className="text-xl">🛠️</span>
@@ -127,7 +124,7 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
             {dynamicTechStack.map((tech, index) => (
               <span 
                 key={index} 
-                className="px-4 py-2 bg-neutral-950 border border-neutral-800 hover:border-purple-500/40 rounded-xl text-sm font-medium transition-all text-neutral-200"
+                className="px-4 py-2 bg-neutral-950 border border-neutral-800 hover:border-yellow-400/40 rounded-xl text-sm font-medium transition-all text-neutral-200"
               >
                 {tech}
               </span>
@@ -135,7 +132,7 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
           </div>
         </div>
 
-        {/* 3. Project Parameters Summary Meta */}
+     
         <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-4">
           <div className="flex items-center gap-3">
             <span className="text-xl">🎯</span>
@@ -156,7 +153,7 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
             <div className="flex flex-wrap gap-2">
               {projectData.features.length > 0 ? (
                 projectData.features.map((f, i) => (
-                  <span key={i} className="px-3 py-1 text-xs font-medium rounded-full bg-purple-950/40 border border-purple-500/20 text-purple-300">
+                  <span key={i} className="px-3 py-1 text-xs font-medium rounded-full bg-yellow-950/40 border border-yellow-400/20 text-yellow-300">
                     {f}
                   </span>
                 ))
@@ -167,7 +164,6 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
           </div>
         </div>
 
-        {/* 4. Development Roadmap Timeline */}
         <div className="rounded-3xl border border-neutral-800 bg-neutral-900/50 p-6 sm:p-8 backdrop-blur-md space-y-8">
           <div className="flex items-center gap-3">
             <span className="text-xl">📋</span>
@@ -175,9 +171,9 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
           </div>
 
           <div className="space-y-8 relative before:absolute before:inset-0 before:left-5 before:w-0.5 before:bg-neutral-800">
-            {/* Step 1 */}
+           
             <div className="flex gap-6 relative">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-purple-500 bg-neutral-950 text-xs font-bold text-purple-400 shadow-xl">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-yellow-400 bg-neutral-950 text-xs font-bold text-yellow-300 shadow-xl">
                 1
               </div>
               <div className="space-y-1 pt-1">
@@ -187,9 +183,9 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
               </div>
             </div>
 
-            {/* Step 2 */}
+           
             <div className="flex gap-6 relative">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-purple-500 bg-neutral-950 text-xs font-bold text-purple-400 shadow-xl">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-yellow-400 bg-neutral-950 text-xs font-bold text-yellow-300 shadow-xl">
                 2
               </div>
               <div className="space-y-1 pt-1">
@@ -199,9 +195,9 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
               </div>
             </div>
 
-            {/* Step 3 */}
+          
             <div className="flex gap-6 relative">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-purple-500 bg-neutral-950 text-xs font-bold text-purple-400 shadow-xl">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-yellow-400 bg-neutral-950 text-xs font-bold text-yellow-300 shadow-xl">
                 3
               </div>
               <div className="space-y-1 pt-1">
@@ -213,7 +209,7 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
           </div>
         </div>
 
-        {/* 5. Comprehensive Full AI Output Document Panel */}
+       
         <div className="rounded-3xl border border-neutral-800 bg-neutral-900/30 p-6 sm:p-8 space-y-4">
           <div className="flex items-center gap-3">
             <span className="text-xl">📄</span>
@@ -224,11 +220,11 @@ export default function BlueprintDashboard({ projectData, onReset }: BlueprintDa
           </div>
         </div>
 
-        {/* Re-scope Action Trigger */}
+
         <div className="text-center pt-4">
           <button
             onClick={onReset}
-            className="px-6 py-2.5 rounded-xl border border-neutral-800 hover:border-purple-500/50 bg-neutral-900 text-sm font-medium transition-all text-neutral-300 hover:text-white"
+            className="px-6 py-2.5 rounded-xl border border-neutral-800 hover:border-yellow-400/50 bg-neutral-900 text-sm font-medium transition-all text-neutral-300 hover:text-white"
           >
             ← Scope Another Product
           </button>
